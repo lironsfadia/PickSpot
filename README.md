@@ -1,6 +1,6 @@
-# Hotspot
+# PickSpot
 
-Hotspot is an internal office seat-booking application. Employees can sign in, choose an office area, and reserve an available seat for a day. Administrators can review bookings, manage users, rename seats, and block or unblock seats.
+PickSpot is an internal office seat-booking application. Employees can sign in, choose an office area, and reserve an available seat for a day. Administrators can review bookings, manage users, rename seats, and block or unblock seats.
 
 ## Run locally
 

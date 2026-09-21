@@ -1,7 +1,7 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "Hotspot",
+  title: "PickSpot",
   description: "Internal office seat booking",
 };
 

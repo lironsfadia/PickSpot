@@ -48,9 +48,9 @@ async function request(url, options = {}) {
 
 function Logo() {
   return (
-    <div className="brand" aria-label="Hotspot">
+    <div className="brand" aria-label="PickSpot">
       <span className="brand-mark" aria-hidden="true"><i /><i /><i /></span>
-      <span><strong>Hotspot</strong></span>
+      <span><strong>PickSpot</strong></span>
     </div>
   );
 }
@@ -94,7 +94,7 @@ function AuthCard({ mode, onModeChange, onAuthenticated, setupComplete }) {
         <h1>{isSetup ? "Create the Owner account" : isRegister ? "Create your account" : "Reserve your seat"}</h1>
         <p className="auth-copy">
           {isSetup
-            ? "This first account controls the Hotspot workspace and can manage administrators."
+            ? "This first account controls the PickSpot workspace and can manage administrators."
             : "Book your desk for tomorrow from the office network."}
         </p>
         <form onSubmit={submit} className="auth-form">
@@ -117,7 +117,7 @@ function AuthCard({ mode, onModeChange, onAuthenticated, setupComplete }) {
         </form>
         {!isSetup && (
           <p className="auth-switch">
-            {isRegister ? "Already have an account?" : "New to Hotspot?"}{" "}
+            {isRegister ? "Already have an account?" : "New to PickSpot?"}{" "}
             <button type="button" onClick={() => onModeChange(isRegister ? "login" : "register")}>{isRegister ? "Sign in" : "Create an account"}</button>
           </p>
         )}
@@ -462,7 +462,7 @@ export default function Home() {
   useEffect(() => { loadSession().catch(() => setState({ loading: false, user: null, setupComplete: false })); }, [loadSession]);
 
   async function logout() { await request("/api/auth/logout", { method: "POST" }); setState((current) => ({ ...current, user: null })); setMode("login"); }
-  if (state.loading) return <main className="loading-screen"><Logo /><span>Loading Hotspot…</span></main>;
+  if (state.loading) return <main className="loading-screen"><Logo /><span>Loading PickSpot…</span></main>;
   if (!state.user) return <AuthCard mode={state.setupComplete ? mode : "setup"} setupComplete={state.setupComplete} onModeChange={setMode} onAuthenticated={loadSession} />;
   return <Dashboard user={state.user} onLogout={logout} />;
 }

@@ -1,0 +1,19 @@
+# Dependencies and Next.js build output
+node_modules/
+.next/
+out/
+
+# Local configuration and logs
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+
+# Local application data (contains users, password hashes, and bookings)
+data/*.db
+data/*.db-*
+
+# Generated design and working files
+outputs/
+work/

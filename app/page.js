@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { displayDesks, seatAreaLabel, furnitureDisplayPoint } from "@/lib/map-presentation";
 
 const statusLabel = {
   available: "Available",
@@ -10,30 +11,11 @@ const statusLabel = {
 };
 
 const MAP_AREAS = [
-  {
-    id: "blue-north", name: "West seating", shortName: "West", color: "blue", seatZone: "Blue",
-    left: 3, top: 4, width: 36, height: 32,
-    path: "M74 98 L727 54 L729 279 L706 310 L329 360 L74 360 Z",
-    tagX: 532, tagY: 282, tagWidth: 178, deskSizes: [6, 6, 6, 6, 6, 6, 6, 6, 6], deskColumns: 7, deskOrientation: "vertical", seatOrder: "paired",
-  },
-  {
-    id: "green-southwest", name: "East seating — A", shortName: "East A", color: "green", seatZone: "Green",
-    left: 4, top: 58, width: 12, height: 18,
-    path: "M65 573 L211 573 L264 676 L264 751 L65 751 Z",
-    tagX: 76, tagY: 696, tagWidth: 174, deskSizes: [6, 6], deskColumns: 2, deskOrientation: "vertical", seatOrder: "paired",
-  },
-  {
-    id: "yellow-south", name: "East seating — B", shortName: "East B", color: "yellow", seatZone: "Yellow",
-    left: 15, top: 63, width: 16, height: 20,
-    path: "M264 658 L473 658 L457 774 L411 774 L264 730 Z",
-    tagX: 286, tagY: 715, tagWidth: 174, deskSizes: [2, 4, 2], deskColumns: 3, deskOrientation: "vertical", seatOrder: "paired", deskSeatOrders: ["paired", "paired", "first-side"],
-  },
-  {
-    id: "green-east", name: "North seating", shortName: "North", color: "green", seatZone: "Green",
-    left: 83, top: 30, width: 13, height: 50,
-    path: "M1368 292 L1504 312 L1520 805 L1474 875 L1370 875 L1353 772 Z",
-    tagX: 1365, tagY: 790, tagWidth: 150, deskSizes: [4, 6, 6, 6, 6], deskColumns: 1, deskOrientation: "horizontal", seatOrder: "rows", enclosedDeskCount: 2,
-  },
+  { id: "west", shortName: "West", color: "blue", x: 23, y: 5 },
+  { id: "east-a", shortName: "East A", color: "green", x: 10, y: 81 },
+  { id: "east-b", shortName: "East B", color: "yellow", x: 24, y: 85 },
+  { id: "north-office", shortName: "North · Office", color: "blue", x: 89, y: 29 },
+  { id: "north-open", shortName: "North · Open space", color: "green", x: 87, y: 94 },
 ];
 
 async function request(url, options = {}) {
@@ -154,159 +136,71 @@ function Legend() {
   </div>;
 }
 
-function isSeatInArea(seat, area) {
-  return seat.zone === area.seatZone
-    && seat.x >= area.left && seat.x <= area.left + area.width
-    && seat.y >= area.top && seat.y <= area.top + area.height;
-}
-
-function activateWithKeyboard(event, action) {
-  if (event.key === "Enter" || event.key === " ") {
-    event.preventDefault();
-    action();
-  }
-}
-
-function AreaOverview({ mapData, onAreaSelect }) {
-  const areas = MAP_AREAS.map((area) => ({
-    ...area,
-    seats: mapData.seats.filter((seat) => isSeatInArea(seat, area)),
-  }));
-
-  return <div className="plan-overview">
-    <div className="plan-guide"><span><i className="guide-seat" />Blue outlines are bookable seating</span><span><i className="guide-facility" />Facilities are shown for orientation</span><span><i className="guide-atrium" />Pink marks the open atrium</span></div>
-    <div className="plan-canvas">
-      <svg className="office-overview-svg" viewBox="0 0 1613 975" role="group" aria-label="Clickable office seating areas">
-        <image href="/office-2d-map.png" x="0" y="0" width="1613" height="975" />
-        <g className="map-facility-chip chip-red" transform="translate(704 493)">
-          <rect width="146" height="44" rx="22" /><text x="73" y="28" textAnchor="middle">Reception</text>
-        </g>
-        <g className="map-facility-chip chip-red" transform="translate(746 176)">
-          <rect width="126" height="44" rx="22" /><text x="63" y="28" textAnchor="middle">Kitchen</text>
-        </g>
-        <g className="map-facility-chip chip-grey" transform="translate(1002 401)">
-          <rect width="205" height="44" rx="22" /><text x="102.5" y="28" textAnchor="middle">Lifts &amp; toilets</text>
-        </g>
-        <g className="map-facility-chip chip-blue" transform="translate(515 603)">
-          <rect width="174" height="44" rx="22" /><text x="87" y="28" textAnchor="middle">Meeting rooms</text>
-        </g>
-        <g className="map-atrium" aria-label="Open atrium with a view down to Floor 0">
-          <path d="M329 360 L711 309 L704 565 L383 585 L315 417 Z" />
-          <g className="map-atrium-label" transform="translate(437 455)">
-            <rect width="222" height="64" rx="14" />
-            <text className="map-atrium-title" x="111" y="27" textAnchor="middle">Open atrium</text>
-            <text className="map-atrium-note" x="111" y="47" textAnchor="middle">View down to Floor 0</text>
-          </g>
-        </g>
-        {areas.map((area) => <g
-          key={area.id}
-          className={`overview-area area-${area.color}`}
-          role="button"
-          tabIndex="0"
-          onClick={() => onAreaSelect(area.id)}
-          aria-label={`Open ${area.name}, ${area.seats.length} seats`}
-          onKeyDown={(event) => activateWithKeyboard(event, () => onAreaSelect(area.id))}
-        >
-          <path d={area.path} />
-          <g className="overview-area-tag" transform={`translate(${area.tagX} ${area.tagY})`}>
-            <rect width={area.tagWidth} height="61" rx="13" />
-            <text className="overview-area-name" x="16" y="25">{area.shortName}</text>
-            <text className="overview-area-count" x="16" y="45">{area.seats.length} seats · View area</text>
-            <text className="area-chevron" x={area.tagWidth - 19} y="37" textAnchor="middle">›</text>
-          </g>
-        </g>)}
-      </svg>
-    </div>
-    <div className="area-shortcuts" aria-label="Seating area shortcuts">
-      {areas.map((area) => <button key={area.id} type="button" onClick={() => onAreaSelect(area.id)}>
-        <span className={`area-shortcut-icon area-${area.color}`} aria-hidden="true" />
-        <span><strong>{area.shortName}</strong><small>{area.seats.length} seats</small></span>
-        <b aria-hidden="true">›</b>
-      </button>)}
-    </div>
-  </div>;
-}
-
-function AlignedSeat({ seat, selected, onSelect, side }) {
-  const inaccessible = seat.status === "blocked" || seat.status === "occupied";
-  return <button
-    type="button"
-    className={`aligned-seat status-${seat.status} ${selected ? "selected" : ""}`}
-    aria-label={`${seat.label}, ${statusLabel[seat.status]}`}
-    disabled={inaccessible}
-    onClick={() => onSelect(seat)}
-    title={`${seat.label}: ${statusLabel[seat.status]}`}
-  >
-    <span className={`aligned-chair-shape chair-${side}`} aria-hidden="true"><i /></span>
-    <small>{seat.label}</small>
-  </button>;
-}
-
-function splitDeskRows(seats, seatOrder) {
-  if (seatOrder === "first-side") {
-    return { top: seats, bottom: [] };
-  }
-  if (seatOrder === "paired") {
-    return {
-      top: seats.filter((_, index) => index % 2 === 0),
-      bottom: seats.filter((_, index) => index % 2 === 1),
-    };
-  }
-  const middle = Math.ceil(seats.length / 2);
-  return { top: seats.slice(0, middle), bottom: seats.slice(middle) };
-}
-
-function DeskCluster({ number, seats, seatOrder, orientation, selectedSeatId, onSelect }) {
-  const rows = splitDeskRows(seats, seatOrder);
-  const firstSide = orientation === "vertical" ? "left" : "top";
-  const secondSide = orientation === "vertical" ? "right" : "bottom";
-  return <section className={`aligned-desk orientation-${orientation} seats-${seats.length}`} aria-label={`Desk ${number}, ${orientation}`}>
-    <div className={`aligned-chair-row side-${firstSide}`}>
-      {rows.top.map((seat) => <AlignedSeat key={seat.id} seat={seat} side={firstSide} selected={selectedSeatId === seat.id} onSelect={onSelect} />)}
-    </div>
-    <div className="aligned-desk-surface"><span>Desk {number}</span></div>
-    <div className={`aligned-chair-row side-${secondSide}`}>
-      {rows.bottom.map((seat) => <AlignedSeat key={seat.id} seat={seat} side={secondSide} selected={selectedSeatId === seat.id} onSelect={onSelect} />)}
-    </div>
-  </section>;
-}
-
-function AreaMap({ mapData, area, selectedSeatId, onSelect }) {
-  const seats = mapData.seats.filter((seat) => isSeatInArea(seat, area)).sort((a, b) => a.id - b.id);
-  let offset = 0;
-  const desks = area.deskSizes.map((size, index) => {
-    const desk = { number: index + 1, seats: seats.slice(offset, offset + size) };
-    offset += size;
-    return desk;
-  }).filter((desk) => desk.seats.length);
-  const renderDesk = (desk) => <DeskCluster
-    key={desk.number}
-    number={desk.number}
-    seats={desk.seats}
-    seatOrder={area.deskSeatOrders?.[desk.number - 1] || area.seatOrder}
-    orientation={area.deskOrientation}
-    selectedSeatId={selectedSeatId}
-    onSelect={onSelect}
-  />;
-  const enclosedDesks = desks.slice(0, area.enclosedDeskCount || 0);
-  const openDesks = desks.slice(area.enclosedDeskCount || 0);
-  return <div className={`aligned-map-frame area-${area.id}`}>
-    <div className="aligned-map-heading"><span>Same desk direction as the office plan · slight angles straightened</span><strong>{seats.length} bookable seats</strong></div>
-    <div className={`aligned-floor-plan area-${area.id} orientation-${area.deskOrientation}`} style={{ "--desk-columns": area.deskColumns }} role="group" aria-label={`${area.name} aligned seat map`}>
-      {enclosedDesks.length > 0 && <section className="enclosed-desk-room" aria-labelledby={`${area.id}-room-label`}>
-        <div className="enclosed-room-heading" id={`${area.id}-room-label`}><strong>Closed room</strong><span>{enclosedDesks.length} desks</span></div>
-        <div className="enclosed-room-desks">{enclosedDesks.map(renderDesk)}</div>
-      </section>}
-      {openDesks.map(renderDesk)}
-    </div>
-  </div>;
-}
-
-function SeatMap({ mapData, activeArea, selectedSeatId, onSelect, onAreaSelect }) {
+function SeatMap({ mapData, selectedSeatId, onSelect }) {
+  const [zoom, setZoom] = useState(1);
+  const [tilted, setTilted] = useState(true);
+  const viewportRef = useRef(null);
   if (!mapData?.site) return <div className="map-loading">Loading the office map…</div>;
-  return activeArea
-    ? <AreaMap mapData={mapData} area={activeArea} selectedSeatId={selectedSeatId} onSelect={onSelect} />
-    : <AreaOverview mapData={mapData} onAreaSelect={onAreaSelect} />;
+
+
+  function resetView() {
+    setZoom(1);
+    viewportRef.current?.scrollTo({ left: 0, top: 0 });
+  }
+  return <div className="office-map">
+    <div className="office-map-toolbar">
+      <span className="map-instruction">Select a seat on the map</span>
+      <div className="office-view-controls">
+        <button type="button" aria-label="Toggle 3D view" aria-pressed={tilted} onClick={() => setTilted((value) => !value)}>{tilted ? "3D view" : "Top view"}</button>
+        <span className="map-control-divider" aria-hidden="true" />
+        <button type="button" aria-label="Zoom out" disabled={zoom <= 1} onClick={() => setZoom((value) => Math.max(1, value - .25))}>−</button>
+        <button type="button" aria-label="Zoom in" disabled={zoom >= 2} onClick={() => setZoom((value) => Math.min(2, value + .25))}>+</button>
+        <button type="button" onClick={resetView}>Fit map</button>
+        <span className="sr-only" role="status">Zoom {Math.round(zoom * 100)}%</span>
+      </div>
+    </div>
+    <div ref={viewportRef} className="office-map-viewport" tabIndex={0} role="region" aria-label="Office map. Scroll to explore; use zoom controls to enlarge seats.">
+      <div className="office-map-stage" style={{ width: `max(${zoom * 100}%, ${zoom * 760}px)` }}>
+        <div className={`office-floor ${tilted ? "is-3d" : "is-top"}`} role="group" aria-label="Office seats">
+          <img className="office-floor-image" src="/office-2d-map.png" alt="Office floor plan with meeting rooms, reception and central atrium" draggable="false" />
+          <svg className="furniture-floor" viewBox="0 0 963 583" aria-hidden="true">
+            <path fill="var(--zone-blue-bg)" d="M62 105 L374 47 L389 125 L66 164 Z M190 169 L269 154 L276 196 L202 209 Z" />
+            <path fill="var(--zone-green-bg)" d="M835 258 L893 258 L901 455 L845 459 L835 398 Z M69 350 L145 371 L135 417 L60 397 Z" />
+            <g className="north-office-room">
+              <path className="north-office-floor" d="M822 184 L897 199 L897 255 L822 255 Z" />
+              <path className="north-office-wall" d="M822 218 L822 184 L897 199 L897 255 L822 255 L822 240" />
+              <path className="north-office-door" d="M822 240 L842 240 M842 240 A20 20 0 0 0 822 220" />
+            </g>
+            <path fill="var(--zone-sand-bg)" d="M158 390 L278 425 L271 452 L147 422 Z" />
+          </svg>
+          {displayDesks.map(([x,y,width,height,angle], index) => {
+            const point = furnitureDisplayPoint(x, y);
+            return <div key={index} className="office-desk" aria-hidden="true" style={{ left: `${point.x / 963 * 100}%`, top: `${point.y / 583 * 100}%`, width: `${width / 963 * 100}%`, height: `${height / 583 * 100}%`, "--desk-angle": `${angle}deg` }}><i /></div>;
+          })}
+          {MAP_AREAS.map((area) => <span key={area.id} className={`office-zone-label zone-label-${area.color}`} style={{ left: `${area.x}%`, top: `${area.y}%` }}><strong>{area.shortName}</strong></span>)}
+          <span className="office-place-label" style={{ left: "49%", top: "58%" }}>Reception</span>
+          <span className="office-place-label" style={{ left: "52%", top: "24%" }}>Kitchen</span>
+          <span className="office-place-label atrium-label" style={{ left: "32%", top: "51%" }}>Open atrium</span>
+          {mapData.seats.map((seat) => {
+            const point = furnitureDisplayPoint(seat.x * 963 / 100, seat.y * 583 / 100);
+            const unavailable = seat.status === "occupied" || seat.status === "blocked";
+            return <button key={seat.id} type="button"
+              className={`office-chair ${seat.status} ${selectedSeatId === seat.id ? "selected" : ""}`}
+              data-seat-id={seat.id}
+              style={{ left: `${point.x / 963 * 100}%`, top: `${point.y / 583 * 100}%` }}
+              aria-label={`${seat.label}, ${statusLabel[seat.status]}, ${seatAreaLabel(seat)}`}
+              aria-pressed={selectedSeatId === seat.id} aria-disabled={unavailable}
+              onClick={() => { if (!unavailable) onSelect(seat); }}
+              title={`${seat.label} · ${seatAreaLabel(seat)} · ${statusLabel[seat.status]}`}>
+              <span className="chair-cushion" aria-hidden="true"><i>{selectedSeatId === seat.id || seat.status === "mine" ? "✓" : unavailable ? "×" : ""}</i></span>
+              <span className="office-chair-label">{seat.label}<small>{seatAreaLabel(seat)}</small><small>{statusLabel[seat.status]}</small></span>
+            </button>;
+          })}
+        </div>
+      </div>
+    </div>
+    <div className="map-footer"><Legend /><span>Scroll to explore</span></div>
+  </div>;
 }
 
 function BookingPanel({ mapData, selectedSeat, onReserve, onCancel, busy }) {
@@ -324,6 +218,7 @@ function BookingPanel({ mapData, selectedSeat, onReserve, onCancel, busy }) {
     <div className="selection-box">
       <span>Selected seat</span>
       <strong>{selectedSeat ? selectedSeat.label : "Choose a seat"}</strong>
+      {selectedSeat && <span className="selected-seat-area">{seatAreaLabel(selectedSeat)}</span>}
       {selectedSeat && <small className={`status-text ${selectedSeat.status}`}>{statusLabel[selectedSeat.status]}</small>}
     </div>
     <button className="primary-button" disabled={!selectedSeat || selectedSeat.status === "blocked" || selectedSeat.status === "occupied" || noWindow || busy} onClick={onReserve}>
@@ -406,7 +301,6 @@ function Dashboard({ user, onLogout }) {
   const [notifications, setNotifications] = useState([]);
   const [adminData, setAdminData] = useState(null);
   const [selectedSeat, setSelectedSeat] = useState(null);
-  const [activeAreaId, setActiveAreaId] = useState(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAdminConsole, setShowAdminConsole] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -414,7 +308,6 @@ function Dashboard({ user, onLogout }) {
 
   const isAdmin = user.role === "admin" || user.role === "owner";
   const unread = notifications.filter((item) => !item.readAt).length;
-  const activeArea = MAP_AREAS.find((area) => area.id === activeAreaId) || null;
 
   const loadData = useCallback(async () => {
     try {
@@ -442,8 +335,8 @@ function Dashboard({ user, onLogout }) {
 
   return <main className="app-shell">
     <header className="app-header"><Logo /><div className="header-actions">{isAdmin && <button className="notification-button" onClick={() => setShowAdminConsole((open) => !open)}>{showAdminConsole ? "Close admin" : "Admin console"}</button>}<button className="notification-button" onClick={() => setShowNotifications(true)}>Notifications{unread ? <b>{unread}</b> : null}</button><span className="user-label"><strong>{user.displayName}</strong><small>{user.role}</small></span><button className="signout-button" onClick={onLogout}>Sign out</button></div></header>
-    <section className="hero"><div><p className="eyebrow">SITE 1 — MAIN OFFICE</p><h1>Choose your desk for tomorrow.</h1><p>Choose West, East, or North seating, then select a chair.</p></div><div className="booking-window"><span className="window-dot" /><div><strong>Booking window</strong><span>06:00–00:00, Israel time</span></div></div></section>
-    <section className="booking-layout"><div className="map-section"><div className="section-topline"><div><h2>{activeArea ? activeArea.name : "Office map"}</h2><p>{activeArea ? "Click a chair to select it." : "Choose a seating area to open a straight, aligned seat view."}</p></div>{activeArea ? <div className="map-tools"><Legend /><button type="button" className="back-to-map" onClick={() => setActiveAreaId(null)}>← Back to office map</button></div> : <span className="map-prompt">Click a seating area</span>}</div><SeatMap mapData={mapData} activeArea={activeArea} selectedSeatId={selectedSeat?.id} onSelect={setSelectedSeat} onAreaSelect={setActiveAreaId} /></div><BookingPanel mapData={mapData} selectedSeat={selectedSeat} onReserve={reserve} onCancel={cancel} busy={busy} /></section>
+    <section className="hero"><div><p className="eyebrow">SITE 1 — MAIN OFFICE</p><h1>Choose your desk for tomorrow.</h1><p>Select a chair on the office map and make it yours for tomorrow.</p></div><div className="booking-window"><span className="window-dot" /><div><strong>Booking window</strong><span>06:00–00:00, Israel time</span></div></div></section>
+    <section className="booking-layout"><div className="map-section"><div className="section-topline"><div><h2>Office map</h2><p>Find your spot for tomorrow.</p></div></div><SeatMap mapData={mapData} selectedSeatId={selectedSeat?.id} onSelect={setSelectedSeat} /></div><BookingPanel mapData={mapData} selectedSeat={selectedSeat} onReserve={reserve} onCancel={cancel} busy={busy} /></section>
     {isAdmin && showAdminConsole && <AdminConsole adminData={adminData} onRefresh={loadData} onToast={(message, error = false) => setToast({ message, error })} user={user} />}
     {showNotifications && <div className="panel-backdrop" onMouseDown={() => setShowNotifications(false)}><div onMouseDown={(event) => event.stopPropagation()}><NotificationPanel notifications={notifications} onClose={() => setShowNotifications(false)} onRead={markNotificationsRead} /></div></div>}
     {toast && <div className={toast.error ? "toast error" : "toast"}>{toast.message}</div>}
